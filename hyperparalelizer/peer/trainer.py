@@ -141,6 +141,7 @@ class TrainerNode:
             # LOGICA DO MAEKAWA: Protege o envio se for um novo melhor modelo
             if is_new_best:
                 await self.maekawa_mutex.request_access()
+                print(f"[MAEKAWA] {self.node_id[:8]}... enviando resultado ao servidor")
                 try:
                     await self._send_result_confirmed(task, metrics=metrics, model_bytes=model_bytes)
                 finally:
