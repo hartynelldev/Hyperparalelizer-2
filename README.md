@@ -1,2 +1,2 @@
 # Hyperparalelizer-2
-Projeto de ITC
+Projeto de Sistemas Distribuídos
