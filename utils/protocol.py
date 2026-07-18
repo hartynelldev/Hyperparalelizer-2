@@ -1,0 +1,385 @@
+"""
+protocol.py - Contratos de mensagens do sistema Hyperparalelizer.
+"""
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, List, Optional
+import time
+
+
+# Tipo de mensagem
+MSG_JOIN_NETWORK = "JoinNetwork"
+MSG_JOIN_ACK = "JoinAck"
+MSG_FIND_NODE = "FindNode"
+MSG_KEEP_ALIVE = "KeepAlive"
+MSG_TRAINING_TASK = "TrainingTask"
+MSG_TASK_RESULT = "TaskResult"
+MSG_REQUEST_BEST = "RequestBestModel"
+MSG_SEND_BEST = "SendBestModel"
+MSG_PUBSUB_SUBSCRIBE = "PubSubSubscribe"
+MSG_PUBSUB_UNSUBSCRIBE = "PubSubUnsubscribe"
+MSG_PUBSUB_PUBLISH = "PubSubPublish"
+MSG_PUBSUB_NOTIFY = "PubSubNotify"
+MSG_ACK = "Ack"
+MSG_ERROR = "Error"
+MSG_MAEKAWA_REQUEST = "MaekawaRequest"
+MSG_MAEKAWA_GRANT = "MaekawaGrant"
+MSG_MAEKAWA_RELEASE = "MaekawaRelease"
+MSG_BULLY_ELECTION = "BullyElection"
+MSG_BULLY_ALIVE = "BullyAlive"
+MSG_BULLY_COORDINATOR = "BullyCoordinator"
+MSG_SYNC_STATE = "SyncState"
+MSG_DATASET_READY = "DatasetReady"
+MSG_REQUEST_FRAGMENT = "RequestFragment"
+MSG_FRAGMENT_DATA = "FragmentData"
+MSG_FRAGMENT_NOT_FOUND = "FragmentNotFound"
+MSG_REQUEST_FRAGMENT_BACKUP = "RequestFragmentBackup"
+MSG_FRAGMENT_BACKUP = "FragmentBackup"
+MSG_MEMBERSHIP_UPDATE = "MembershipUpdate"
+MSG_PEER_READY = "PeerReady"
+
+
+@dataclass
+class JoinNetwork:
+    ip: str
+    porta: int
+    memoria_total_mb: float = 0.0
+    memoria_disponivel_mb: float = 0.0
+
+    type: str = field(default=MSG_JOIN_NETWORK, init=False)
+
+    def to_dict(self):
+        return asdict(self)
+
+@dataclass
+class JoinAck:
+    node_id: str
+    fragment_id: Optional[str]
+    peers: List[Dict[str, Any]]
+    run_id: str
+    task: Optional[Dict[str, Any]] = None
+    type: str = field(default=MSG_JOIN_ACK, init=False)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class FindNode:
+    id_node: str
+
+    type: str = field(default=MSG_FIND_NODE, init=False)
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass
+class KeepAlive:
+    id_node: str
+    timestamp: float = field(default_factory=time.time)
+
+    type: str = field(default=MSG_KEEP_ALIVE, init=False)
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass
+class TrainingTask:
+    task_id: str
+    id_node_origem: str
+    dataset_fragmentos: List[str]
+    parametros: Dict[str, Any]
+    model_type: str
+    model_config: Dict[str, Any] = field(default_factory=dict)
+    run_id: str = ""
+
+    type: str = field(default=MSG_TRAINING_TASK, init=False)
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass
+class TaskResult:
+    task_id: str
+    id_node: str
+    accuracy: Optional[float] = None
+    precision: Optional[float] = None
+    recall: Optional[float] = None
+    f1_score: Optional[float] = None
+    roc_auc: Optional[float] = None
+    tempo_treino_s: float = 0.0
+    status: Optional[str] = None
+    error: Optional[str] = None
+    model_bytes: Optional[bytes] = None
+    run_id: str = ""
+
+    type: str = field(default=MSG_TASK_RESULT, init=False)
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass
+class RequestBestModel:
+    id_node: str
+
+    type: str = field(default=MSG_REQUEST_BEST, init=False)
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass
+class SendBestModel:
+    id_node: str
+    model_bytes: bytes
+    metricas: Dict[str, float] = field(default_factory=dict)
+
+    type: str = field(default=MSG_SEND_BEST, init=False)
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass
+class PubSubSubscribe:
+    id_node: str
+    topic: str
+    listen_port: int  # porta do nó para receber notificações
+
+    type: str = field(default=MSG_PUBSUB_SUBSCRIBE, init=False)
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass
+class PubSubUnsubscribe:
+    id_node: str
+    topic: str
+
+    type: str = field(default=MSG_PUBSUB_UNSUBSCRIBE, init=False)
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass
+class PubSubPublish:
+    id_node: str
+    topic: str
+    payload: Dict[str, Any]
+    lamport_clock: int = 0
+
+    type: str = field(default=MSG_PUBSUB_PUBLISH, init=False)
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass
+class PubSubNotify:
+    topic: str
+    payload: Dict[str, Any]
+    lamport_clock: int = 0
+
+    type: str = field(default=MSG_PUBSUB_NOTIFY, init=False)
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass
+class Ack:
+    ref_type: str
+    ref_id: Optional[str] = None
+
+    type: str = field(default=MSG_ACK, init=False)
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass
+class ErrorMsg:
+    code: str
+    detail: str
+
+    type: str = field(default=MSG_ERROR, init=False)
+
+    def to_dict(self):
+        return asdict(self)
+
+
+def from_dict(data: Dict[str, Any]):
+    """Builds a message object from dict data."""
+    msg_type = data.get("type")
+    if msg_type is None:
+        raise ValueError(f"Unknown message type: {msg_type!r}")
+
+    cls = _TYPE_MAP.get(msg_type)
+    if cls is None:
+        raise ValueError(f"Unknown message type: {msg_type!r}")
+
+    kwargs = {k: v for k, v in data.items() if k != "type"}
+    return cls(**kwargs)
+
+
+@dataclass
+class MaekawaRequest:
+    id_node: str
+    timestamp: int
+    type: str = field(default=MSG_MAEKAWA_REQUEST, init=False)
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class MaekawaGrant:
+    id_node: str
+    type: str = field(default=MSG_MAEKAWA_GRANT, init=False)
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class MaekawaRelease:
+    id_node: str
+    type: str = field(default=MSG_MAEKAWA_RELEASE, init=False)
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class SyncState:
+    id_node: str  # id do servidor
+    global_table_snapshot: dict
+    run_id: str = ""
+    pupil_id: str = ""
+    pupil_epoch: int = 0
+    snapshot_id: str = ""
+    task_queue_snapshot: list = field(default_factory=list)
+    best_model_metrics: dict = field(default_factory=dict)
+    type: str = field(default=MSG_SYNC_STATE, init=False)
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class MembershipUpdate:
+    epoch: int
+    peers: list
+    run_id: str = ""
+    type: str = field(default=MSG_MEMBERSHIP_UPDATE, init=False)
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class PeerReady:
+    id_node: str
+    type: str = field(default=MSG_PEER_READY, init=False)
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class BullyElectionMsg:
+    id_node: str
+    type: str = field(default=MSG_BULLY_ELECTION, init=False)
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class BullyAliveMsg:
+    id_node: str
+    type: str = field(default=MSG_BULLY_ALIVE, init=False)
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class BullyCoordinatorMsg:
+    id_node: str
+    type: str = field(default=MSG_BULLY_COORDINATOR, init=False)
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class DatasetReady:
+    id_node: str
+    fragment_id: str
+    run_id: str = ""
+    type: str = field(default=MSG_DATASET_READY, init=False)
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class RequestFragment:
+    id_node: str
+    fragment_id: str
+    type: str = field(default=MSG_REQUEST_FRAGMENT, init=False)
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class FragmentData:
+    id_node: str
+    fragment_id: str
+    data: bytes
+    type: str = field(default=MSG_FRAGMENT_DATA, init=False)
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class FragmentNotFound:
+    id_node: str
+    fragment_id: str
+    type: str = field(default=MSG_FRAGMENT_NOT_FOUND, init=False)
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class RequestFragmentBackup:
+    id_node: str
+    fragment_id: str
+    type: str = field(default=MSG_REQUEST_FRAGMENT_BACKUP, init=False)
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class FragmentBackupData:
+    id_node: str
+    fragment_id: str
+    data: bytes
+    type: str = field(default=MSG_FRAGMENT_BACKUP, init=False)
+    def to_dict(self): return asdict(self)
+
+
+# Mapeamento de tipo para as mensagens
+_TYPE_MAP = {
+    MSG_JOIN_NETWORK: JoinNetwork,
+    MSG_JOIN_ACK: JoinAck,
+    MSG_FIND_NODE: FindNode,
+    MSG_KEEP_ALIVE: KeepAlive,
+    MSG_TRAINING_TASK: TrainingTask,
+    MSG_TASK_RESULT: TaskResult,
+    MSG_REQUEST_BEST: RequestBestModel,
+    MSG_SEND_BEST: SendBestModel,
+    MSG_PUBSUB_SUBSCRIBE: PubSubSubscribe,
+    MSG_PUBSUB_UNSUBSCRIBE: PubSubUnsubscribe,
+    MSG_PUBSUB_PUBLISH: PubSubPublish,
+    MSG_PUBSUB_NOTIFY: PubSubNotify,
+    MSG_ACK: Ack,
+    MSG_ERROR: ErrorMsg,
+    MSG_MAEKAWA_REQUEST: MaekawaRequest,
+    MSG_MAEKAWA_GRANT: MaekawaGrant,
+    MSG_MAEKAWA_RELEASE: MaekawaRelease,
+    MSG_BULLY_ELECTION: BullyElectionMsg, 
+    MSG_BULLY_ALIVE: BullyAliveMsg,
+    MSG_BULLY_COORDINATOR: BullyCoordinatorMsg,
+    MSG_SYNC_STATE: SyncState,
+    MSG_DATASET_READY: DatasetReady,
+    MSG_REQUEST_FRAGMENT: RequestFragment,
+    MSG_FRAGMENT_DATA: FragmentData,
+    MSG_FRAGMENT_NOT_FOUND: FragmentNotFound,
+    MSG_REQUEST_FRAGMENT_BACKUP: RequestFragmentBackup,
+    MSG_FRAGMENT_BACKUP: FragmentBackupData,
+    MSG_MEMBERSHIP_UPDATE: MembershipUpdate,
+    MSG_PEER_READY: PeerReady,
+}
