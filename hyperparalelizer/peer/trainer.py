@@ -141,9 +141,11 @@ class TrainerNode:
             # LOGICA DO MAEKAWA: Protege o envio se for um novo melhor modelo
             if is_new_best:
                 await self.maekawa_mutex.request_access()
-                self._send_result(task, metrics=metrics, model_bytes=model_bytes)
-                result_sent = True
-                await self.maekawa_mutex.release_access()
+                try:
+                    await self._send_result_confirmed(task, metrics=metrics, model_bytes=model_bytes)
+                finally:
+                    result_sent = True
+                    await self.maekawa_mutex.release_access()
             else:
                 self._send_result(task, metrics=metrics, model_bytes=model_bytes)
                 result_sent = True
@@ -211,8 +213,8 @@ class TrainerNode:
 
     # Enviar resultado
 
-    def _send_result(self, task: Dict[str, Any], metrics: Optional[Dict[str, float]], model_bytes: Optional[bytes] = None, error: Optional[str] = None,) -> None:
-        message = {
+    def _build_result_message(self, task: Dict[str, Any], metrics: Optional[Dict[str, float]], model_bytes: Optional[bytes] = None, error: Optional[str] = None,) -> Dict[str, Any]:
+        return {
             "type": "TaskResult",
             "task_id": task.get("task_id"),
             "run_id": task.get("run_id") or self.run_id,
@@ -226,7 +228,18 @@ class TrainerNode:
             "model_bytes": model_bytes,
             "error": error,
         }
+
+    def _send_result(self, task: Dict[str, Any], metrics: Optional[Dict[str, float]], model_bytes: Optional[bytes] = None, error: Optional[str] = None,) -> None:
+        message = self._build_result_message(task, metrics, model_bytes, error)
         self.messenger.send(message)
+
+    async def _send_result_confirmed(self, task: Dict[str, Any], metrics: Optional[Dict[str, float]], model_bytes: Optional[bytes] = None, error: Optional[str] = None,) -> bool:
+        message = self._build_result_message(task, metrics, model_bytes, error)
+        send_confirmed = getattr(self.messenger, "send_and_confirm", None)
+        if send_confirmed is None:
+            self.messenger.send(message)
+            return True
+        return await send_confirmed(message)
 
     # Request best model
 

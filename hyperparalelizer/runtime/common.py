@@ -413,6 +413,43 @@ class ReliablePeerMessenger(PeerMessenger):
             )
         return reply is not None and reply.get("type") != MSG_ERROR
 
+    async def send_and_confirm(
+        self, message: Dict[str, Any], attempts: int = 3
+    ) -> bool:
+        spool_path: Optional[Path] = None
+        if message.get("type") == MSG_TASK_RESULT:
+            task_id = str(message.get("task_id") or uuid.uuid4())
+            spool_path = self.spool_dir / f"task_result_{safe_filename(task_id)}.pkl"
+            atomic_pickle_dump(message, spool_path, lock=self._spool_lock)
+
+        delivered = False
+        for attempt in range(1, attempts + 1):
+            try:
+                delivered = await self._send_checked(message)
+            except Exception as exc:
+                print(
+                    f"[WARNING] send_and_confirm: falha ao enviar "
+                    f"{message.get('type')} (tentativa {attempt}/{attempts}): {exc}"
+                )
+                delivered = False
+
+            if delivered:
+                break
+
+        if delivered:
+            if spool_path is not None:
+                with contextlib.suppress(FileNotFoundError):
+                    spool_path.unlink()
+        elif spool_path is not None:
+            self._outbound_queue.put({"message": message, "spool_path": str(spool_path)})
+            print(
+                f"[WARNING] send_and_confirm: {message.get('type')} não confirmado "
+                f"após {attempts} tentativa(s); reenfileirado para retry"
+            )
+
+        return delivered
+
+
 def short_id(value: str, size: int = 8) -> str:
     return value[:size] + ("…" if len(value) > size else "")
 
