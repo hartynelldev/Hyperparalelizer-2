@@ -3,8 +3,8 @@ from __future__ import annotations
 """hyperparalelizer.main - bootstrap e orquestração do Hyperparalelizer.
 
 Uso:
-    python -m main server --host 127.0.0.1 --port 9000 --max-ram-mb 2048 --max-cpu-cores 2
-    python -m main peer --host 127.0.0.1 --port 9101 --server-port 9000 --max-ram-mb 512 --max-cpu-cores 1
+    python -m main_beta4 server --host 127.0.0.1 --port 9000 --max-ram-mb 2048 --max-cpu-cores 2
+    python -m main_beta4 peer --host 127.0.0.1 --port 9101 --server-port 9000 --max-ram-mb 512 --max-cpu-cores 1
 """
 
 import argparse
@@ -20,7 +20,17 @@ from hyperparalelizer.runtime.common import (
 )
 from hyperparalelizer.runtime.peer_runtime import run_peer
 from hyperparalelizer.runtime.server_runtime import run_server
-from utils.logger import set_level
+from utils.logger import get_logger, set_level
+
+log = get_logger("main")
+
+
+def _quiet_connection_reset_handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+    exc = context.get("exception")
+    if isinstance(exc, (ConnectionResetError, ConnectionAbortedError)):
+        log.debug(f"Conexão encerrada pela outra ponta (ignorado): {exc}")
+        return
+    loop.default_exception_handler(context)
 
 
 def positive_int(value: str) -> int:
@@ -198,6 +208,7 @@ async def async_main() -> None:
     args = parser.parse_args()
 
     set_level(logging.DEBUG if args.debug else logging.INFO)
+    asyncio.get_running_loop().set_exception_handler(_quiet_connection_reset_handler)
 
     if args.mode == "server":
         prompt_dataset_and_hyperparameters(args)
