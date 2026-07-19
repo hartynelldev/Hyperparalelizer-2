@@ -3,8 +3,8 @@ from __future__ import annotations
 """hyperparalelizer.main - bootstrap e orquestração do Hyperparalelizer.
 
 Uso:
-    python -m main_beta4 server --host 127.0.0.1 --port 9000 --max-ram-mb 2048 --max-cpu-cores 2
-    python -m main_beta4 peer --host 127.0.0.1 --port 9101 --server-port 9000 --max-ram-mb 512 --max-cpu-cores 1
+    python -m main server --host 127.0.0.1 --port 9000 --max-ram-mb 2048 --max-cpu-cores 2
+    python -m main peer --host 127.0.0.1 --port 9101 --server-port 9000 --max-ram-mb 512 --max-cpu-cores 1
 """
 
 import argparse
