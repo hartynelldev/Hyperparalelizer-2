@@ -1,5 +1,11 @@
-# Hyperparalelizer-2
+# Hyperparalelizer
 Projeto de Sistemas Distribuídos
+
+## Integrantes do Grupo
+- Bruno Tenorio Park: 15635566
+- Davi Oliveira Medina: 15695021
+- Isabella Cremonezi Morija: 14579951
+- Karina Yang Chen: 15466658
 
 ## Execução com 3 peers (rodar em terminais diferentes)
 - **Coordenador**:     python -m main server --host 127.0.0.1 --port 9000 --max-ram-mb 2048 --max-cpu-cores 2
